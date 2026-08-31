@@ -26,5 +26,12 @@ result-*
 # ==============================================================================
 # Generated key stream splits & export backups
 # ==============================================================================
+# Manual unencrypted database exports and dumps
+*.export.*
+export_*
+backup_*
+keys_*.txt
+*_dump.*
+*.bak
 valid_keys_stream_*.txt
 *.enc.json

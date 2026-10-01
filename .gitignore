@@ -35,3 +35,10 @@ keys_*.txt
 *.bak
 valid_keys_stream_*.txt
 *.enc.json
+
+# ==============================================================================
+# Agentic SDD scratch & test artifacts
+# ==============================================================================
+.superpowers/
+.pytest_cache/
+tests/__pycache__/

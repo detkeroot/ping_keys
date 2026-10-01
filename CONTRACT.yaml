@@ -1,0 +1,221 @@
+# ==============================================================================
+# 🌐 Gemini Nexus DB Architecture & Module Contract (GRACE 4 + PCAM)
+# ==============================================================================
+# Локальный контракт архитектуры репозитория ping_keys для навигации ИИ-агентов,
+# предотвращения коллизий scope параллельных сабагентов и детерминированной проверки.
+# ==============================================================================
+
+version: "1.0.0"
+project: "ping_keys"
+standard: "GRACE 4 + PCAM Invariant Architecture"
+
+nodes:
+  # ----------------------------------------------------------------------------
+  # 1. КОНФИГУРАЦИЯ И СТАНДАРТЫ МОДЕЛЕЙ (CONFIG)
+  # ----------------------------------------------------------------------------
+  - id: M-PING-CONFIG
+    name: "Core Configuration & Models Catalog"
+    type: module
+    purpose: "Единая конфигурация приложения, каталог моделей Gemini 3.x, маппинг статусов и цветов"
+    invariants:
+      - "Запрет устаревших моделей по умолчанию (приоритет Gemini 3.x)"
+      - "Строгий запрет PII (авторство только detkeroot / NeuroStarNet)"
+    owns:
+      - "gemini_nexus/core/config.py"
+      - "tests/test_config.py"
+    depends:
+      - REPO-PING-KEYS
+    exposes:
+      - "gemini_nexus.core.config.*"
+    consumers:
+      - M-PING-DB
+      - M-PING-CHECKER
+      - M-PING-UI-CORE
+      - M-PING-UI-VIEWS
+    verification: "pytest tests/test_config.py -v"
+
+  # ----------------------------------------------------------------------------
+  # 2. КРИПТОГРАФИЧЕСКАЯ ПОДСИСТЕМА (CRYPTO)
+  # ----------------------------------------------------------------------------
+  - id: M-PING-CRYPTO
+    name: "Zero-Dependency Authenticated Stream Cipher"
+    type: module
+    purpose: "Автономное шифрование/дешифрование баз данных и экспортов (PBKDF2-HMAC-SHA256 + CTR + HMAC)"
+    invariants:
+      - "Обратная совместимость формата шифрования с бэкапами v13.x"
+      - "Криптографическая проверка целостности HMAC-SHA256 перед расшифровкой"
+      - "Чистый Python без внешних C-зависимостей (zero-dependency)"
+    owns:
+      - "gemini_nexus/core/crypto.py"
+      - "tests/test_crypto.py"
+    depends:
+      - M-PING-CONFIG
+    exposes:
+      - "encrypt_data(data_str, password) -> str"
+      - "decrypt_data(payload_str, password) -> str | None"
+    consumers:
+      - M-PING-UI-VIEWS
+    verification: "pytest tests/test_crypto.py -v"
+
+  # ----------------------------------------------------------------------------
+  # 3. СУБД И РЕПОЗИТОРИЙ ДАННЫХ (DATABASE)
+  # ----------------------------------------------------------------------------
+  - id: M-PING-DB
+    name: "SQLite WAL Database Repository"
+    type: module
+    purpose: "Транзакционное хранилище ключей, донатеров, моделей и настроек в режиме SQLite WAL"
+    invariants:
+      - "PRAGMA journal_mode = WAL, synchronous = NORMAL, foreign_keys = ON"
+      - "Защита от утечки ключей: база gemini_keys.db строго в .gitignore"
+      - "Сохранение целостности схемы и данных 340+ существующих ключей"
+    owns:
+      - "gemini_nexus/core/db.py"
+      - "tests/test_db.py"
+    depends:
+      - M-PING-CONFIG
+    exposes:
+      - "Database class (CRUD, migrations, settings)"
+    consumers:
+      - M-PING-UI-CORE
+      - M-PING-UI-VIEWS
+      - M-PING-APP
+    verification: "pytest tests/test_db.py -v"
+
+  # ----------------------------------------------------------------------------
+  # 4. СПЛИТТЕР ПОТОКОВ И БАЛАНСИРОВЩИК (SPLITTER)
+  # ----------------------------------------------------------------------------
+  - id: M-PING-SPLITTER
+    name: "Round-Robin Stream Balancer"
+    type: module
+    purpose: "Равномерное распределение валидных ключей по N потокам для воркеров и ботов"
+    invariants:
+      - "Исключение ключей со статусом не 'OK' и ключей с флагом is_ignored = 1"
+      - "Детерминированное распределение Round-Robin без дубликатов"
+    owns:
+      - "gemini_nexus/core/splitter.py"
+      - "tests/test_splitter.py"
+    depends:
+      - M-PING-CONFIG
+    exposes:
+      - "split_keys_round_robin(keys, num_streams) -> dict"
+    consumers:
+      - M-PING-UI-VIEWS
+    verification: "pytest tests/test_splitter.py -v"
+
+  # ----------------------------------------------------------------------------
+  # 5. СЕТЕВОЙ ЧЕКЕР И ДИСПАТЧЕР (CHECKER)
+  # ----------------------------------------------------------------------------
+  - id: M-PING-CHECKER
+    name: "Google API Network Dispatcher & Response Classifier"
+    type: module
+    purpose: "Отправка тестовых запросов к Gemini API, поддержка SOCKS4/5 прокси и классификация ошибок"
+    invariants:
+      - "Точная классификация 429 (лимит), 403 (unrestricted vs permission denied), 400 (биллинг/регион)"
+      - "Таймаут по умолчанию 12.0с с защитой от зависания сокетов"
+    owns:
+      - "gemini_nexus/core/checker.py"
+      - "tests/test_classifier.py"
+    depends:
+      - M-PING-CONFIG
+    exposes:
+      - "classify_google_response(status_code, error_data)"
+      - "check_api_key(key, model, proxy_url, timeout)"
+    consumers:
+      - M-PING-UI-CORE
+    verification: "pytest tests/test_classifier.py -v"
+
+  # ----------------------------------------------------------------------------
+  # 6. БАЗОВЫЕ UI КОМПОНЕНТЫ И ВОРКЕР (UI CORE)
+  # ----------------------------------------------------------------------------
+  - id: M-PING-UI-CORE
+    name: "PyQt6 Core Widgets & Thread-Safe CheckWorker"
+    type: ui
+    purpose: "Переиспользуемые виджеты (StatusBadge, LogViewer) и фоновый QThread воркер с Qt сигналами"
+    invariants:
+      - "Потокобезопасность: обновление UI строго через pyqtSignal, запрет прямого доступа из потоков"
+      - "Нативный Wayland HiDPI рендеринг без XWayland артефактов"
+    owns:
+      - "gemini_nexus/ui/widgets"
+      - "gemini_nexus/ui/workers"
+    depends:
+      - M-PING-CHECKER
+      - M-PING-CONFIG
+    exposes:
+      - "StatusBadge, LogViewer"
+      - "CheckWorker(QThread)"
+    consumers:
+      - M-PING-UI-VIEWS
+      - M-PING-APP
+    verification: "python3 -m py_compile gemini_nexus/ui/widgets/*.py gemini_nexus/ui/workers/*.py"
+
+  # ----------------------------------------------------------------------------
+  # 7. ЭКРАНЫ И ВЬЮШКИ ПРИЛОЖЕНИЯ (UI VIEWS)
+  # ----------------------------------------------------------------------------
+  - id: M-PING-UI-VIEWS
+    name: "PyQt6 Application Views (Manager, Checker, Splitter, Info)"
+    type: ui
+    purpose: "Визуальные экраны: виртуализированная QTableView база, чекер со статистикой, сплиттер и справка"
+    invariants:
+      - "Виртуализация списка ключей через QTableView для мгновенного скролла 10 000+ записей"
+      - "Нативная поддержка буфера обмена Wayland в любой раскладке клавиатуры"
+    owns:
+      - "gemini_nexus/ui/views"
+    depends:
+      - M-PING-DB
+      - M-PING-CRYPTO
+      - M-PING-SPLITTER
+      - M-PING-UI-CORE
+    exposes:
+      - "ManagerView, CheckerView, SplitterView, InfoView"
+    consumers:
+      - M-PING-APP
+    verification: "python3 -m py_compile gemini_nexus/ui/views/*.py"
+
+  # ----------------------------------------------------------------------------
+  # 8. ГЛАВНОЕ ОКНО И ТОЧКА ВХОДА (APP SHELL)
+  # ----------------------------------------------------------------------------
+  - id: M-PING-APP
+    name: "Main Window Shell & Desktop Entrypoint"
+    type: ui
+    purpose: "Сборка главного окна QMainWindow с левым сайдбаром, переключением страниц и запуском QApplication"
+    invariants:
+      - "Темизация pyqtdarktheme (темная тема, скругленные углы)"
+      - "Корректная обработка выхода и завершения фоновых воркеров"
+    owns:
+      - "gemini_nexus/ui/main_window.py"
+      - "gemini_nexus/main.py"
+    depends:
+      - M-PING-UI-VIEWS
+      - M-PING-DB
+    exposes:
+      - "MainWindow"
+      - "gemini_nexus.main:main"
+    consumers:
+      - M-PING-PACKAGE
+    verification: "python3 -m py_compile gemini_nexus/ui/main_window.py gemini_nexus/main.py"
+
+  # ----------------------------------------------------------------------------
+  # 9. ДЕКЛАРАТИВНЫЙ ПАКЕТ NIXOS И ЛАУНЧЕР (PACKAGE)
+  # ----------------------------------------------------------------------------
+  - id: M-PING-PACKAGE
+    name: "NixOS Flake & Universal Launcher"
+    type: infrastructure
+    purpose: "Декларативное Nix-окружение (PyQt6 + pyqtdarktheme + qtwayland), чистый run.sh и pyproject.toml"
+    invariants:
+      - "Запрет XWayland: использование qt6.qtwayland и wrapQtAppsHook"
+      - "Удаление устаревших костылей с chmod ~/.fonts"
+    owns:
+      - "flake.nix"
+      - "run.sh"
+      - "pyproject.toml"
+      - "requirements.txt"
+    depends:
+      - M-PING-APP
+      - HOST-DETKER-NIXOS
+    exposes:
+      - "apps.default (ping-keys)"
+      - "./run.sh"
+    consumers:
+      - SYS-AI-OMP
+      - USER-DANILA
+    verification: "nix flake check --no-build"

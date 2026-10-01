@@ -10,14 +10,24 @@
 
 **Spec:** `docs/superpowers/specs/2026-10-02-gemini-nexus-pyqt6-modernization-design.md`
 
-## Global Constraints
+## Global Constraints & Quality Standards (PCAM)
 
 - **Strict Public Repository Policy:** Absolutely ZERO Personally Identifiable Information (no real names, addresses, private phones, private credentials). Author identity is strictly `detkeroot` / `NeuroStarNet`.
 - **Zero API Key Leakage:** Do not commit or hardcode real API keys or database dumps. `gemini_keys.db` must remain gitignored.
 - **Model Lineup Standard:** Default and recommended models must prioritize Gemini 3.x (`gemini-3.8-flash`, `gemini-3.8-flash-high`, `gemini-3.7-flash`).
 - **Native Wayland HiDPI:** Zero XWayland blurriness; must render cleanly under Wayland with fractional scaling (1.8x).
 - **Test-Driven Rigor:** Core modules (`crypto`, `db`, `splitter`, `checker`) must have isolated pytest test suites.
-
+- **UX & Aesthetics Standard:**
+  - Modern dark theme (`pyqtdarktheme`) with rounded corners (8px) and color-coded status badges (`StatusBadge`).
+  - Ergonomic sidebar navigation with persistent tab state.
+  - Instant live search (Search-as-you-type) across keys, donators, and notes.
+  - 1-click ergonomics: double-click to copy key, instant toggle ignore, batch paste with deduplication counter.
+  - Rich visual telemetry: live progress bar, real-time counters (OK/Limit/Dead), speed indicator (keys/sec).
+- **Reliability & Engineering Quality Standard:**
+  - High-performance SQLite engine with WAL mode and indexed lookups.
+  - Virtualized `QTableView` rendering for 0 ms lag on large datasets.
+  - Thread safety: `QThread` with Qt signals, preventing any UI freeze or lockup.
+  - Network resilience: smart retry on transient 503/timeout, zero unhandled network exceptions, Zero Crash Policy.
 ---
 
 ### Task 1: Package Scaffolding & Core Configuration

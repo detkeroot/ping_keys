@@ -1,16 +1,16 @@
 """Network dispatcher and Google API status classifier for Gemini Nexus DB."""
+
 import json
-import socket
 import urllib.error
 import urllib.parse
 import urllib.request
-from typing import Any, Dict, Optional, Tuple
+from typing import Any
 
 
 def classify_google_response(
     status_code: int,
-    error_data: Optional[Dict[str, Any]] = None,
-) -> Tuple[str, str]:
+    error_data: dict[str, Any] | None = None,
+) -> tuple[str, str]:
     """Classify Google Generative Language API HTTP status code and response payload.
 
     Args:
@@ -51,9 +51,7 @@ def classify_google_response(
 
     if status_code == 400:
         detail = (
-            f"Региональное ограничение / Биллинг: {error_msg}"
-            if error_msg
-            else "Региональный блок / Требуется биллинг"
+            f"Региональное ограничение / Биллинг: {error_msg}" if error_msg else "Региональный блок / Требуется биллинг"
         )
         return "FAILED_PRECONDITION", detail
 
@@ -66,7 +64,11 @@ def classify_google_response(
         return "NOT_FOUND", detail
 
     if status_code == 500:
-        detail = f"Внутренняя ошибка сервера Google (500): {error_msg}" if error_msg else "Внутренняя ошибка сервера Google (500)"
+        detail = (
+            f"Внутренняя ошибка сервера Google (500): {error_msg}"
+            if error_msg
+            else "Внутренняя ошибка сервера Google (500)"
+        )
         return "INTERNAL_ERROR", detail
 
     if status_code in (502, 503):
@@ -107,7 +109,7 @@ def build_proxy_opener(proxy_url: str) -> urllib.request.OpenerDirector:
         except ImportError:
             raise ImportError(
                 "Для работы SOCKS прокси требуется библиотека PySocks. Установите её: pip install PySocks"
-            )
+            ) from None
 
         stype = (
             getattr(socks, "PROXY_TYPE_SOCKS5", getattr(socks, "SOCKS5", 2))
@@ -131,9 +133,9 @@ def build_proxy_opener(proxy_url: str) -> urllib.request.OpenerDirector:
 def check_api_key(
     key: str,
     model: str,
-    proxy_url: Optional[str] = None,
+    proxy_url: str | None = None,
     timeout: float = 12.0,
-) -> Tuple[str, str]:
+) -> tuple[str, str]:
     """Test a Google Gemini API key by sending a minimal generateContent request.
 
     Args:
@@ -175,7 +177,7 @@ def check_api_key(
                 err_json = None
 
         return classify_google_response(e.code, err_json)
-    except (urllib.error.URLError, TimeoutError, socket.timeout) as e:
-        return "TIMEOUT", f"Сетевая ошибка / таймаут соединения: {str(e)}"
+    except (urllib.error.URLError, TimeoutError) as e:
+        return "TIMEOUT", f"Сетевая ошибка / таймаут соединения: {e!s}"
     except Exception as e:
-        return "INTERNAL_ERROR", f"Непредвиденное исключение: {str(e)}"
+        return "INTERNAL_ERROR", f"Непредвиденное исключение: {e!s}"

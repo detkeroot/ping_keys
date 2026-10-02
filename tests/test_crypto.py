@@ -2,8 +2,8 @@ import base64
 import hashlib
 import hmac
 import secrets
-import pytest
-from gemini_nexus.core.crypto import encrypt_data, decrypt_data
+
+from gemini_nexus.core.crypto import decrypt_data, encrypt_data
 
 
 def test_encrypt_decrypt_roundtrip():

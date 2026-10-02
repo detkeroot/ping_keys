@@ -1,8 +1,9 @@
 """SQLite repository and database engine for Gemini Nexus DB."""
 
 import sqlite3
+from collections.abc import Generator
 from contextlib import contextmanager
-from typing import Any, Dict, Generator, List, Optional, Tuple
+from typing import Any
 
 from gemini_nexus.core.config import DEFAULT_DB_FILE, DEFAULT_MODELS
 
@@ -84,7 +85,7 @@ class Database:
 
             conn.commit()
 
-    def get_owners(self) -> List[Dict[str, Any]]:
+    def get_owners(self) -> list[dict[str, Any]]:
         """Retrieves all owners with their active key count, sorted alphabetically."""
         with self.connect() as conn:
             c = conn.cursor()
@@ -120,7 +121,7 @@ class Database:
             c.execute("DELETE FROM owners WHERE id=?", (owner_id,))
             conn.commit()
 
-    def add_keys(self, owner_id: int, key_strings: List[str]) -> Tuple[int, int]:
+    def add_keys(self, owner_id: int, key_strings: list[str]) -> tuple[int, int]:
         """Adds a batch of API keys for an owner, skipping duplicates."""
         added = 0
         dupes = 0
@@ -141,9 +142,7 @@ class Database:
             conn.commit()
         return added, dupes
 
-    def get_keys(
-        self, status_filter: str = "Все", search_query: str = ""
-    ) -> List[Dict[str, Any]]:
+    def get_keys(self, status_filter: str = "Все", search_query: str = "") -> list[dict[str, Any]]:
         """Retrieves keys filtered by status and/or search query."""
         query = """
             SELECT k.id, k.owner_id, o.nickname AS owner_nickname, k.key_string,
@@ -152,7 +151,7 @@ class Database:
             LEFT JOIN owners o ON k.owner_id = o.id
             WHERE 1=1
         """
-        params: List[Any] = []
+        params: list[Any] = []
         if status_filter != "Все":
             if status_filter == "Активные (OK)":
                 query += " AND k.status = 'OK'"
@@ -196,7 +195,6 @@ class Database:
             )
             conn.commit()
 
-
     def toggle_key_ignored(self, key_id: int) -> bool:
         """Toggles the is_ignored state for a key, returning the new state."""
         with self.connect() as conn:
@@ -215,7 +213,7 @@ class Database:
             c.execute("DELETE FROM api_keys WHERE id=?", (key_id,))
             conn.commit()
 
-    def reset_statuses(self, owner_id: Optional[int] = None) -> None:
+    def reset_statuses(self, owner_id: int | None = None) -> None:
         """Resets status to UNCHECKED and clears detail for all or owner-specific keys."""
         with self.connect() as conn:
             c = conn.cursor()
@@ -239,7 +237,7 @@ class Database:
             conn.commit()
             return int(deleted)
 
-    def get_models(self) -> List[str]:
+    def get_models(self) -> list[str]:
         """Returns all configured Gemini model identifiers sorted by name."""
         with self.connect() as conn:
             c = conn.cursor()

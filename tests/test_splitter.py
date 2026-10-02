@@ -1,8 +1,8 @@
 """Unit tests for Gemini Nexus stream splitter and load balancer."""
-import pytest
+
 from gemini_nexus.core.splitter import (
-    split_keys_round_robin,
     filter_active_keys,
+    split_keys_round_robin,
 )
 
 

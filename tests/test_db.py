@@ -1,5 +1,7 @@
 """Unit tests for SQLite database repository."""
+
 import pytest
+
 from gemini_nexus.core.db import Database
 
 

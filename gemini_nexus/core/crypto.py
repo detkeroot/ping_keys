@@ -9,7 +9,6 @@ import base64
 import hashlib
 import hmac
 import secrets
-from typing import Optional
 
 
 def encrypt_data(data_str: str, password: str) -> str:
@@ -42,7 +41,7 @@ def encrypt_data(data_str: str, password: str) -> str:
     return base64.b64encode(final_payload).decode("utf-8")
 
 
-def decrypt_data(payload_str: str, password: str) -> Optional[str]:
+def decrypt_data(payload_str: str, password: str) -> str | None:
     """Decrypts a base64 payload. Returns None if password is wrong or integrity check fails.
 
     Supports:
@@ -84,9 +83,7 @@ def decrypt_data(payload_str: str, password: str) -> Optional[str]:
             iv_v13 = payload_raw_v13[16:32]
             encrypted_bytes_v13 = payload_raw_v13[32:]
 
-            derived_v13 = hashlib.pbkdf2_hmac(
-                "sha256", password.encode("utf-8"), salt_v13, 100000, dklen=64
-            )
+            derived_v13 = hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"), salt_v13, 100000, dklen=64)
             enc_k_v13, hmac_k_v13 = derived_v13[:32], derived_v13[32:]
             expected_tag_v13 = hmac.new(hmac_k_v13, payload_raw_v13, hashlib.sha256).digest()
 

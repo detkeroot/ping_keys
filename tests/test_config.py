@@ -1,12 +1,13 @@
 """Unit tests for Gemini Nexus core configuration."""
+
 from gemini_nexus.core.config import (
     APP_NAME,
     APP_VERSION,
     AUTHOR,
     DEFAULT_DB_FILE,
     DEFAULT_MODELS,
-    STATUS_RU,
     STATUS_COLORS,
+    STATUS_RU,
 )
 
 

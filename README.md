@@ -1,8 +1,8 @@
-# 🚀 Gemini Nexus DB — Enterprise Core v13.9
+# 🚀 Gemini Nexus DB — Enterprise Core v14.0
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Python-3.10%20%7C%203.11%20%7C%203.12%20%7C%203.13-blue?style=for-the-badge&logo=python&logoColor=white" alt="Python Version" />
-  <img src="https://img.shields.io/badge/GUI-CustomTkinter-blueviolet?style=for-the-badge" alt="GUI Framework" />
+  <img src="https://img.shields.io/badge/Python-3.10%20%7C%203.11%20%7C%203.12%20%7C%203.13%20%7C%203.14-blue?style=for-the-badge&logo=python&logoColor=white" alt="Python Version" />
+  <img src="https://img.shields.io/badge/GUI-PyQt6%20Native%20Wayland-green?style=for-the-badge&logo=qt&logoColor=white" alt="GUI Framework" />
   <img src="https://img.shields.io/badge/Database-SQLite%20WAL-success?style=for-the-badge&logo=sqlite&logoColor=white" alt="Database" />
   <img src="https://img.shields.io/badge/NixOS-Flakes%20Ready-5277C3?style=for-the-badge&logo=nixos&logoColor=white" alt="NixOS" />
   <img src="https://img.shields.io/badge/Security-PBKDF2--HMAC--SHA256-critical?style=for-the-badge" alt="Security" />
@@ -12,38 +12,37 @@
 
 ## 📌 О проекте
 
-**Gemini Nexus DB** (v13.9 Enterprise by **NeuroStarNet**) — это автономный десктопный комплекс и диспетчер оркестрации пула краудсорсинговых API-ключей **Google Gemini** и **Gemma**. 
+**Gemini Nexus DB** (v14.0 Enterprise by **NeuroStarNet**) — это современный автономный десктопный комплекс и диспетчер оркестрации пула краудсорсинговых API-ключей **Google Gemini** и **Gemma** на базе **PyQt6** с нативной поддержкой **Wayland HiDPI**.
 
-Приложение предназначено для высокоскоростной многопоточной валидации (пинга) ключей, мониторинга лимитов RPM/TPM и региональных блокировок, балансировки рабочих ключей по параллельным потокам для downstream-воркеров нейроперевода (таких как *SuperGeminiTranslator*, Telegram-боты очереди), а также защищенного экспорта и шифрования базы данных.
-
+Приложение предназначено для высокоскоростной многопоточной валидации ключей, мониторинга квот и лимитов (RPM/TPM), балансировки рабочих ключей по параллельным потокам для downstream-воркеров нейроперевода (таких как *SuperGeminiTranslator*, Telegram-боты), а также защищенного экспорта и шифрования базы данных.
 ---
 
 ## 🏛️ Архитектура и Data Flow
 
 ```
 +-------------------------------------------------------------------------------+
-|                       CustomTkinter GUI (GeminiNexus)                         |
-|  [ Manager / CRUD ]    [ Key Checker ]    [ Stream Splitter ]    [ FAQ / Doc ]|
+|                 PyQt6 Native Wayland GUI (MainWindow Shell)                   |
+|  [ ManagerView ]       [ CheckerView ]       [ SplitterView ]     [ InfoView ]|
 +------------------------------------+------------------------------------------+
                                      |
               +----------------------+----------------------+
               |                                             |
               v                                             v
    +--------------------+                       +-----------------------+
-   |  SQLite Database   |                       | ThreadPoolExecutor    |
-   | (WAL, NORMAL sync) |                       | (Multi-thread Checker)|
+   | SQLite WAL Repo    |                       | CheckWorker (QThread) |
+   | (core/db.py)       |                       | (ui/workers)          |
    +--------------------+                       +-----------+-----------+
               |                                             |
               |                                             v
               |                                 +-----------------------+
-              |                                 | HTTP POST Dispatcher  |
-              |                                 | urllib + PySocks      |
+              |                                 | Network Dispatcher    |
+              |                                 | (core/checker.py)     |
               |                                 +-----------+-----------+
               v                                             |
    +--------------------+                                   v
-   | Cryptography Subsys|                       +-----------------------+
-   | PBKDF2-HMAC-SHA256 |                       | Google Generative API |
-   | CTR Stream Cipher  |                       | :generateContent      |
+   | Zero-Dep Crypto    |                       +-----------------------+
+   | (core/crypto.py)   |                       | Google Generative API |
+   | PBKDF2 + CTR + HMAC|                       | :generateContent      |
    +--------------------+                       +-----------------------+
 ```
 

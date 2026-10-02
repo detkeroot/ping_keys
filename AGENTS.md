@@ -2,53 +2,52 @@
 
 ## Project Overview
 
-**Gemini Nexus DB** (`ping_keys`, v13.9 Enterprise by NeuroStarNet) is a standalone desktop application and orchestration system designed for managing, verifying, load-balancing, and securely backing up crowd-sourced Google Gemini and Gemma API keys.
+**Gemini Nexus DB** (`ping_keys`, v14.0 Enterprise by NeuroStarNet) is a standalone desktop application and orchestration system designed for managing, verifying, load-balancing, and securely backing up crowd-sourced Google Gemini and Gemma API keys.
 
-The tool validates API keys against Google Generative Language endpoints, tracks quota/status lifecycles (rate limits, regional restrictions, security policies), partitions active keys across balanced output streams for downstream translation bots and AI workers, and provides encrypted database backup and restore capabilities.
-
+The system features a native Wayland PyQt6 graphical interface with HiDPI support, decoupled service-repository architecture (`gemini_nexus/`), pure-Python authenticated stream cryptography, SQLite WAL storage, and a multi-threaded network dispatcher.
 ---
 
 ## Architecture & Data Flow
 
 ```
 +-------------------------------------------------------------------------------+
-|                       CustomTkinter GUI (GeminiNexus)                         |
-|  [ Manager / CRUD ]    [ Key Checker ]    [ Stream Splitter ]    [ FAQ / Doc ]|
+|                 PyQt6 Native Wayland GUI (MainWindow Shell)                   |
+|  [ ManagerView ]       [ CheckerView ]       [ SplitterView ]     [ InfoView ]|
 +------------------------------------+------------------------------------------+
                                      |
               +----------------------+----------------------+
               |                                             |
               v                                             v
    +--------------------+                       +-----------------------+
-   |  SQLite Database   |                       | ThreadPoolExecutor    |
-   | (WAL, NORMAL sync) |                       | (Multi-thread Checker)|
+   | SQLite WAL Repo    |                       | CheckWorker (QThread) |
+   | (core/db.py)       |                       | (ui/workers)          |
    +--------------------+                       +-----------+-----------+
               |                                             |
               |                                             v
               |                                 +-----------------------+
-              |                                 | HTTP POST Dispatcher  |
-              |                                 | urllib + PySocks      |
+              |                                 | Network Dispatcher    |
+              |                                 | (core/checker.py)     |
               |                                 +-----------+-----------+
               v                                             |
    +--------------------+                                   v
-   | Cryptography Subsys|                       +-----------------------+
-   | PBKDF2-HMAC-SHA256 |                       | Google Generative API |
-   | CTR Stream Cipher  |                       | :generateContent      |
+   | Zero-Dep Crypto    |                       +-----------------------+
+   | (core/crypto.py)   |                       | Google Generative API |
+   | PBKDF2 + CTR + HMAC|                       | :generateContent      |
    +--------------------+                       +-----------------------+
 ```
 
 ### Core Subsystems
 
-1. **Presentation & UI Layer (`GeminiNexus`)**:
-   - Built on `customtkinter` with a dark theme, sidebar navigation, and tabbed view controllers.
-   - Cross-platform Cyrillic hotkey handling and context menu interceptor (`apply_context_menu`) ensuring clipboard shortcuts (`Ctrl+C`, `Ctrl+V`, `Ctrl+X`, `Ctrl+A`) work reliably across Linux (X11/Wayland) and Windows.
-
+1. **Presentation & UI Layer (`gemini_nexus/ui/`)**:
+   - Built on **PyQt6** and **`pyqtdarktheme`** with native Wayland rendering (`qt6.qtwayland`), fractional HiDPI scaling (1.8x on 2.8K displays), and hardware acceleration.
+   - Decoupled into `MainWindow`, `ManagerView` (virtualized `QTableView`), `CheckerView`, `SplitterView`, and `InfoView`.
+   - Full native Wayland clipboard integration across Latin and Cyrillic keyboard layouts without input hacks.
 2. **Database Engine (`sqlite3` with WAL mode)**:
    - High-concurrency SQLite storage using `PRAGMA journal_mode=WAL;`, `PRAGMA synchronous=NORMAL;`, and `PRAGMA temp_store=MEMORY;`.
    - Automatic inline schema migrations on startup (adding notes, ignore flags, migration markers).
 
 3. **Key Checker & Network Dispatcher**:
-   - Asynchronous execution using `threading.Thread` (daemon worker) driving a `concurrent.futures.ThreadPoolExecutor`.
+   - Asynchronous execution using `CheckWorker(QThread)` driving network calls with Qt signal-slot thread safety (`progress_updated`, `stats_updated`, `log_emitted`, `key_finished`).
    - Sends test generation requests (`POST https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={key}`).
    - HTTP/HTTPS and SOCKS4/SOCKS5 proxy dispatching via `urllib.request` and `PySocks` (`SocksiPyHandler`).
    - Fine-grained HTTP response classifier mapping status codes and Google error JSON payloads to standardized operational statuses.
@@ -63,21 +62,26 @@ The tool validates API keys against Google Generative Language endpoints, tracks
    - Partitions all active (`status='OK' AND is_ignored=0`) keys across $N$ streams using a Round-Robin algorithm (`do_split`).
    - Exports key sets into distinct stream files (`valid_keys_stream_<id>.txt`) for multi-worker parallel execution.
 
----
-
-## Key Directories & Project Layout
-
 ```
-├── ping_keys_NeuroStarNet_v13.9.py   # Main monolithic application script (GUI, DB, Checker, Splitter, Crypto)
-├── run.sh                           # Universal executable launcher script (auto-detects Nix / venv)
-├── flake.nix                         # Declarative Nix flake (devShell + default app)
-├── flake.lock                        # Locked Nix dependency hashes
-├── shell.nix                         # Classic nix-shell fallback environment
-├── .envrc                           # Direnv configuration (auto-loads Nix flake)
-├── requirements.txt                 # Standard Python dependencies
-├── pyproject.toml                   # Project metadata and ruff configuration
-├── .gitignore                       # Ignored files (.venv, caches, exports, SQLite databases)
-├── README.md                         # Presentation & technical documentation
+├── gemini_nexus/                     # Main application package
+│   ├── __init__.py                   # Package metadata (v14.0.0, NeuroStarNet)
+│   ├── main.py                       # Application entrypoint & High DPI init
+│   ├── core/                         # Pure Python business logic & services
+│   │   ├── config.py                 # Configuration, models catalog (Gemini 3.x), status mappings
+│   │   ├── crypto.py                 # PBKDF2-HMAC-SHA256 + CTR Stream Cipher + HMAC
+│   │   ├── db.py                     # SQLite WAL repository with cascading foreign keys
+│   │   ├── checker.py                # Network dispatcher & Google API error classifier
+│   │   └── splitter.py               # Round-Robin stream balancer
+│   └── ui/                           # PyQt6 presentation layer
+│       ├── main_window.py            # MainWindow shell & sidebar navigation
+│       ├── widgets/                  # StatusBadge, LogViewer
+│       ├── views/                    # ManagerView, CheckerView, SplitterView, InfoView
+│       └── workers/                  # CheckWorker (QThread)
+├── tests/                            # Comprehensive Pytest test suite (58 tests)
+├── run.sh                            # Universal native launcher script
+├── flake.nix                         # Declarative Nix flake (PyQt6 + pyqtdarktheme + qtwayland)
+├── pyproject.toml                    # Package metadata and ruff configuration
+├── CONTRACT.yaml                     # GRACE 4 + PCAM module contract passport
 └── AGENTS.md                         # Repository guidelines & developer documentation
 ```
 

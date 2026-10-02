@@ -1,7 +1,6 @@
 """Core configuration and constants for Gemini Nexus DB."""
 
 from pathlib import Path
-from typing import Dict, List
 
 APP_NAME: str = "Gemini Nexus DB"
 APP_VERSION: str = "14.0.0"
@@ -10,7 +9,7 @@ DEFAULT_DB_FILE: str = "gemini_keys.db"
 DEFAULT_DB_PATH: Path = Path(DEFAULT_DB_FILE)
 
 # Gemini 3.x flagship line + standard models
-DEFAULT_MODELS: List[str] = [
+DEFAULT_MODELS: list[str] = [
     "gemini-3.8-flash",
     "gemini-3.8-flash-high",
     "gemini-3.7-flash",
@@ -19,7 +18,7 @@ DEFAULT_MODELS: List[str] = [
     "gemma-3-27b-it",
 ]
 
-STATUS_RU: Dict[str, str] = {
+STATUS_RU: dict[str, str] = {
     "OK": "Работает",
     "UNCHECKED": "Не проверен",
     "RESOURCE_EXHAUSTED": "Лимит (429)",
@@ -34,7 +33,7 @@ STATUS_RU: Dict[str, str] = {
     "NOT_FOUND": "Модель не найдена (404)",
 }
 
-STATUS_COLORS: Dict[str, str] = {
+STATUS_COLORS: dict[str, str] = {
     "OK": "#2ecc71",
     "UNCHECKED": "#7f8c8d",
     "RESOURCE_EXHAUSTED": "#f39c12",

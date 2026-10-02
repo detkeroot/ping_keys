@@ -1,4 +1,5 @@
 """Unit tests for Gemini API status classifier and network dispatcher."""
+
 import io
 import json
 import urllib.error
@@ -61,7 +62,12 @@ def test_classify_failed_precondition():
     payload = {"error": {"code": 400, "message": "User location is not supported for the API use."}}
     status, detail = classify_google_response(400, payload)
     assert status == "FAILED_PRECONDITION"
-    assert "регион" in detail.lower() or "биллинг" in detail.lower() or "предусловие" in detail.lower() or "precondition" in detail.lower()
+    assert (
+        "регион" in detail.lower()
+        or "биллинг" in detail.lower()
+        or "предусловие" in detail.lower()
+        or "precondition" in detail.lower()
+    )
 
 
 def test_classify_unauthorized():

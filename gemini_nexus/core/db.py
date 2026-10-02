@@ -186,6 +186,17 @@ class Database:
             )
             conn.commit()
 
+    def update_key_notes(self, key_id: int, notes: str) -> None:
+        """Updates notes for a given key ID."""
+        with self.connect() as conn:
+            c = conn.cursor()
+            c.execute(
+                "UPDATE api_keys SET notes=? WHERE id=?",
+                (notes.strip(), key_id),
+            )
+            conn.commit()
+
+
     def toggle_key_ignored(self, key_id: int) -> bool:
         """Toggles the is_ignored state for a key, returning the new state."""
         with self.connect() as conn:

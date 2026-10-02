@@ -36,15 +36,18 @@
 
         packages.default = pkgs.writeShellApplication {
           name = "ping-keys";
-          runtimeInputs = [ pythonEnv ];
+          runtimeInputs = [
+            pythonEnv
+            pkgs.qt6.qtwayland
+          ];
           text = ''
-            DIR="$(cd "$(dirname "''${BASH_SOURCE[0]}")" && pwd)"
-            # Find script location relative or in cwd
-            if [ -f "$PWD/ping_keys_NeuroStarNet_v13.9.py" ]; then
-              exec python3 "$PWD/ping_keys_NeuroStarNet_v13.9.py" "$@"
+            export QT_QPA_PLATFORM="wayland;xcb"
+            if [ -d "$PWD/gemini_nexus" ]; then
+              export PYTHONPATH="$PWD''${PYTHONPATH:+:$PYTHONPATH}"
             else
-              exec python3 "${./ping_keys_NeuroStarNet_v13.9.py}" "$@"
+              export PYTHONPATH="${./.}''${PYTHONPATH:+:$PYTHONPATH}"
             fi
+            exec python3 -m gemini_nexus.main "$@"
           '';
         };
 

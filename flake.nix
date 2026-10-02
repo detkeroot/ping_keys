@@ -11,9 +11,10 @@
       let
         pkgs = import nixpkgs { inherit system; };
         pythonEnv = pkgs.python3.withPackages (ps: with ps; [
-          customtkinter
+          pyqt6
+          pyqtdarktheme
           pysocks
-          tkinter
+          pytest
         ]);
       in
       {
@@ -21,14 +22,15 @@
           name = "ping_keys_dev_shell";
           packages = [
             pythonEnv
+            pkgs.qt6.qtwayland
             pkgs.sqlite
             pkgs.ruff
           ];
 
           shellHook = ''
             export PYTHONUNBUFFERED=1
-            echo "🚀 [Gemini Nexus DB] Dev environment loaded (Python $(python3 --version))"
-            echo "💡 Run './run.sh' or 'python3 ping_keys_NeuroStarNet_v13.9.py' to launch the GUI."
+            export QT_QPA_PLATFORM="wayland;xcb"
+            echo "🚀 [Gemini Nexus DB] Dev environment loaded (Python $(python3 --version), PyQt6 Native Wayland)"
           '';
         };
 
